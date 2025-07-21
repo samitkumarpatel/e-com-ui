@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>E-Commerce Store</title>
+  <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@mdi/font@6.x/css/materialdesignicons.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/vuetify@3.4.4/dist/vuetify.min.css" rel="stylesheet">
+  <style>
+    .product-card {
+      transition: transform 0.2s ease-in-out;
+    }
+    .product-card:hover {
+      transform: translateY(-4px);
+    }
+    .category-chip {
+      margin: 4px;
+    }
+    .discount-badge {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      z-index: 1;
+    }
+    .original-price {
+      text-decoration: line-through;
+      color: #666;
+      font-size: 0.9em;
+    }
+    .product-image-container {
+      position: relative;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <v-app>
+      <!-- Loading Overlay -->
+      <v-overlay 
+        :model-value="store.loading" 
+        class="align-center justify-center"
+        contained
+      >
+        <v-progress-circular
+          indeterminate
+          size="64"
+          color="primary"
+        ></v-progress-circular>
+      </v-overlay>
+
+      <!-- Use v-container with max-width to center everything -->
+      <v-container fluid class="pa-0">
+        <v-card elevation="4" class="mx-auto" max-width="1200">
+          
+          <!-- App Bar -->
+          <v-app-bar color="primary" dark flat>
+            <v-app-bar-title>
+              <v-icon start>mdi-storefront</v-icon>
+              E-Commerce Store
+            </v-app-bar-title>
+            <v-spacer></v-spacer>
+            
+            <!-- Search Bar -->
+            <v-text-field
+              v-model="searchQuery"
+              prepend-inner-icon="mdi-magnify"
+              label="Search products..."
+              hide-details
+              density="compact"
+              variant="outlined"
+              max-width="300"
+              class="mr-4"
+              @input="filterProducts"
+            ></v-text-field>
+
+            <!-- Cart Button -->
+            <v-btn icon @click="cartDrawer = true">
+              <v-badge
+                :content="store.cartItemsCount"
+                :model-value="store.cartItemsCount > 0"
+                color="red"
+              >
+                <v-icon>mdi-cart</v-icon>
+              </v-badge>
+            </v-btn>
+          </v-app-bar>
+
+          <!-- Main Content -->
+          <v-main>
+            <v-container fluid class="pa-4">
+          <!-- Category Filter -->
+          <v-row class="mb-4">
+            <v-col cols="12">
+              <h2 class="mb-3">Categories</h2>
+              <div>
+                <v-chip
+                  v-for="category in store.categories"
+                  :key="category.id"
+                  :color="selectedCategory === category.id ? 'primary' : 'default'"
+                  :variant="selectedCategory === category.id ? 'flat' : 'outlined'"
+                  class="category-chip"
+                  @click="selectCategory(category.id)"
+                >
+                  {{ category.name }}
+                </v-chip>
+                <v-chip
+                  :color="selectedCategory === null ? 'primary' : 'default'"
+                  :variant="selectedCategory === null ? 'flat' : 'outlined'"
+                  class="category-chip"
+                  @click="selectCategory(null)"
+                >
+                  All Products
+                </v-chip>
+              </div>
+            </v-col>
+          </v-row>
+
+          <!-- Products Grid -->
+          <v-row>
+            <v-col
+              v-for="product in filteredProducts"
+              :key="product.id"
+              cols="12"
+              sm="6"
+              md="4"
+              lg="3"
+            >
+              <v-card class="product-card" elevation="2">
+                <div class="product-image-container">
+                  <v-img
+                    :src="product.image"
+                    height="200"
+                    cover
+                  ></v-img>
+                  
+                  <!-- Discount Badge -->
+                  <v-chip
+                    v-if="product.discount > 0"
+                    color="red"
+                    text-color="white"
+                    size="small"
+                    class="discount-badge"
+                  >
+                    -{{ product.discount }}%
+                  </v-chip>
+                </div>
+
+                <v-card-title class="pb-2">
+                  {{ product.name }}
+                </v-card-title>
+
+                <v-card-subtitle class="pb-1">
+                  {{ product.category }}
+                </v-card-subtitle>
+
+                <v-card-text>
+                  <div class="d-flex align-center mb-2">
+                    <span class="text-h6 primary--text mr-2">
+                      ${{ calculateDiscountedPrice(product) }}
+                    </span>
+                    <span v-if="product.discount > 0" class="original-price">
+                      ${{ product.price }}
+                    </span>
+                  </div>
+                  
+                  <div class="text-body-2 mb-2">
+                    Stock: {{ product.stock }}
+                  </div>
+                  
+                  <div class="d-flex align-center">
+                    <v-rating
+                      :model-value="product.rating"
+                      color="amber"
+                      density="compact"
+                      readonly
+                      size="small"
+                    ></v-rating>
+                    <span class="text-caption ml-1">({{ product.rating }})</span>
+                  </div>
+                </v-card-text>
+
+                <v-card-actions>
+                                <v-btn
+                color="primary"
+                variant="flat"
+                :disabled="product.stock === 0 || store.loading"
+                @click="store.addToCart(product)"
+                block
+              >
+                <v-icon start>mdi-cart-plus</v-icon>
+                {{ product.stock === 0 ? 'Out of Stock' : 'Add to Cart' }}
+              </v-btn>
+                </v-card-actions>
+              </v-card>
+            </v-col>
+          </v-row>
+
+          <!-- Empty State -->
+          <v-row v-if="filteredProducts.length === 0 && !store.loading">
+            <v-col cols="12" class="text-center py-8">
+              <v-icon size="64" color="grey">mdi-package-variant</v-icon>
+              <h3 class="mt-4 mb-2">No products found</h3>
+              <p class="text-body-1">Try adjusting your search or category filter</p>
+            </v-col>
+          </v-row>
+            </v-container>
+          </v-main>
+
+          <!-- Footer - aligned like header -->
+          <v-card-actions class="pa-0">
+            <v-sheet color="primary" width="100%" class="text-center pa-4">
+              <v-row>
+                <v-col cols="12" md="4">
+                  <h3 class="mb-2 text-white">E-Commerce Store</h3>
+                  <p class="text-body-2 text-white">Your one-stop shop for everything</p>
+                </v-col>
+                <v-col cols="12" md="4">
+                  <h4 class="mb-2 text-white">Quick Links</h4>
+                  <div class="d-flex flex-column">
+                    <a href="#" class="text-white text-decoration-none mb-1">About Us</a>
+                    <a href="#" class="text-white text-decoration-none mb-1">Contact</a>
+                    <a href="#" class="text-white text-decoration-none mb-1">Privacy Policy</a>
+                  </div>
+                </v-col>
+                <v-col cols="12" md="4">
+                  <h4 class="mb-2 text-white">Follow Us</h4>
+                  <div>
+                    <v-btn icon variant="text" color="white">
+                      <v-icon>mdi-facebook</v-icon>
+                    </v-btn>
+                    <v-btn icon variant="text" color="white">
+                      <v-icon>mdi-twitter</v-icon>
+                    </v-btn>
+                    <v-btn icon variant="text" color="white">
+                      <v-icon>mdi-instagram</v-icon>
+                    </v-btn>
+                  </div>
+                </v-col>
+              </v-row>
+              <v-divider class="my-4" color="white"></v-divider>
+              <p class="text-body-2 ma-0 text-white">© 2025 E-Commerce Store. All rights reserved.</p>
+            </v-sheet>
+          </v-card-actions>
+
+        </v-card>
+      </v-container>
+
+      <!-- Cart Drawer -->
+      <v-navigation-drawer
+        v-model="cartDrawer"
+        location="right"
+        temporary
+        width="400"
+      >
+        <v-card flat>
+          <v-card-title class="d-flex align-center">
+            <v-icon start>mdi-cart</v-icon>
+            Shopping Cart
+            <v-spacer></v-spacer>
+            <v-btn icon @click="cartDrawer = false">
+              <v-icon>mdi-close</v-icon>
+            </v-btn>
+          </v-card-title>
+
+          <v-divider></v-divider>
+
+          <!-- Cart Items -->
+          <div v-if="store.cartItems.length === 0" class="pa-4 text-center">
+            <v-icon size="64" color="grey">mdi-cart-outline</v-icon>
+            <h3 class="mt-4 mb-2">Your cart is empty</h3>
+            <p class="text-body-2">Add some products to get started</p>
+          </div>
+
+          <div v-else>
+            <v-list>
+              <v-list-item
+                v-for="item in store.cartItems"
+                :key="item.id"
+                class="pa-3"
+              >
+                <template v-slot:prepend>
+                  <v-avatar size="60" rounded>
+                    <v-img :src="item.image"></v-img>
+                  </v-avatar>
+                </template>
+
+                <v-list-item-title class="font-weight-medium">
+                  {{ item.name }}
+                </v-list-item-title>
+                
+                <v-list-item-subtitle>
+                  ${{ calculateDiscountedPrice(item) }} each
+                </v-list-item-subtitle>
+
+                <template v-slot:append>
+                  <div class="d-flex flex-column align-center">
+                    <div class="d-flex align-center mb-2">
+                      <v-btn
+                        icon
+                        size="small"
+                        @click="store.updateCartItemQuantity(item.id, item.quantity - 1)"
+                        :disabled="item.quantity <= 1"
+                      >
+                        <v-icon>mdi-minus</v-icon>
+                      </v-btn>
+                      
+                      <span class="mx-3 font-weight-medium">{{ item.quantity }}</span>
+                      
+                      <v-btn
+                        icon
+                        size="small"
+                        @click="store.updateCartItemQuantity(item.id, item.quantity + 1)"
+                        :disabled="item.quantity >= item.stock"
+                      >
+                        <v-icon>mdi-plus</v-icon>
+                      </v-btn>
+                    </div>
+                    
+                    <v-btn
+                      icon
+                      size="small"
+                      color="red"
+                      @click="store.removeFromCart(item.id)"
+                    >
+                      <v-icon>mdi-delete</v-icon>
+                    </v-btn>
+                  </div>
+                </template>
+              </v-list-item>
+            </v-list>
+
+            <v-divider></v-divider>
+
+            <!-- Cart Summary -->
+            <v-card-text>
+              <div class="d-flex justify-space-between align-center mb-2">
+                <span class="text-body-1">Subtotal:</span>
+                <span class="text-h6">${{ store.cartTotal.toFixed(2) }}</span>
+              </div>
+              
+              <div class="d-flex justify-space-between align-center mb-3">
+                <span class="text-body-1">Items:</span>
+                <span class="text-body-1">{{ store.cartItemsCount }}</span>
+              </div>
+
+              <v-btn
+                color="primary"
+                variant="flat"
+                block
+                size="large"
+                :disabled="store.cartItems.length === 0"
+                @click="checkout"
+              >
+                <v-icon start>mdi-credit-card</v-icon>
+                Checkout
+              </v-btn>
+            </v-card-text>
+          </div>
+        </v-card>
+      </v-navigation-drawer>
+
+      <!-- Snackbar for notifications -->
+      <v-snackbar
+        v-model="snackbar.show"
+        :color="snackbar.color"
+        :timeout="3000"
+        location="top"
+      >
+        {{ snackbar.message }}
+        <template v-slot:actions>
+          <v-btn
+            variant="text"
+            @click="snackbar.show = false"
+          >
+            Close
+          </v-btn>
+        </template>
+      </v-snackbar>
+    </v-app>
+  </div>
+
+  <!-- Vue 3 and dependencies -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vuetify@3.4.4/dist/vuetify.min.js"></script>
+  <script src="https://unpkg.com/vue-demi"></script>
+  <script src="https://unpkg.com/pinia@2.1.7/dist/pinia.iife.js"></script>
+
+  <script>
+    const { createApp, ref, computed, onMounted } = Vue;
+    const { createVuetify } = Vuetify;
+    const { createPinia, defineStore } = Pinia;
+
+    // Mock API endpoints - Replace with your actual API
+    const API_BASE_URL = 'https://fakestoreapi.com';
+
+    // Pinia Store
+    const useECommerceStore = defineStore('ecommerce', () => {
+      // State
+      const products = ref([]);
+      const categories = ref([]);
+      const cartItems = ref([]);
+      const loading = ref(false);
+
+      // Getters
+      const cartItemsCount = computed(() => {
+        return cartItems.value.reduce((total, item) => total + item.quantity, 0);
+      });
+
+      const cartTotal = computed(() => {
+        return cartItems.value.reduce((total, item) => {
+          const discountedPrice = item.price * (1 - item.discount / 100);
+          return total + (discountedPrice * item.quantity);
+        }, 0);
+      });
+
+      // Actions
+      const fetchCategories = async () => {
+        try {
+          loading.value = true;
+          const response = await fetch(`${API_BASE_URL}/products/categories`);
+          const categoryNames = await response.json();
+          
+          categories.value = categoryNames.map((name, index) => ({
+            id: index + 1,
+            name: name.charAt(0).toUpperCase() + name.slice(1)
+          }));
+        } catch (error) {
+          console.error('Error fetching categories:', error);
+          // Fallback categories
+          categories.value = [
+            { id: 1, name: 'Electronics' },
+            { id: 2, name: 'Jewelery' },
+            { id: 3, name: "Men's Clothing" },
+            { id: 4, name: "Women's Clothing" }
+          ];
+        } finally {
+          loading.value = false;
+        }
+      };
+
+      const fetchProducts = async () => {
+        try {
+          loading.value = true;
+          const response = await fetch(`${API_BASE_URL}/products`);
+          const productsData = await response.json();
+          
+          products.value = productsData.map(product => ({
+            id: product.id,
+            name: product.title,
+            price: product.price,
+            category: product.category.charAt(0).toUpperCase() + product.category.slice(1),
+            image: product.image,
+            rating: product.rating.rate,
+            stock: Math.floor(Math.random() * 50) + 10, // Random stock between 10-60
+            discount: Math.floor(Math.random() * 30), // Random discount 0-30%
+            description: product.description
+          }));
+        } catch (error) {
+          console.error('Error fetching products:', error);
+          // Fallback products
+          products.value = [
+            {
+              id: 1,
+              name: 'Sample Product 1',
+              price: 29.99,
+              category: 'Electronics',
+              image: 'https://via.placeholder.com/200',
+              rating: 4.5,
+              stock: 25,
+              discount: 10,
+              description: 'A great sample product'
+            },
+            {
+              id: 2,
+              name: 'Sample Product 2',
+              price: 39.99,
+              category: 'Jewelery',
+              image: 'https://via.placeholder.com/200',
+              rating: 4.2,
+              stock: 15,
+              discount: 15,
+              description: 'Another great sample product'
+            }
+          ];
+        } finally {
+          loading.value = false;
+        }
+      };
+
+      const addToCart = (product) => {
+        const existingItem = cartItems.value.find(item => item.id === product.id);
+        
+        if (existingItem) {
+          if (existingItem.quantity < product.stock) {
+            existingItem.quantity++;
+            showNotification('Quantity updated in cart', 'success');
+          } else {
+            showNotification('Cannot add more items - stock limit reached', 'warning');
+          }
+        } else {
+          cartItems.value.push({
+            ...product,
+            quantity: 1
+          });
+          showNotification('Product added to cart', 'success');
+        }
+      };
+
+      const removeFromCart = (productId) => {
+        cartItems.value = cartItems.value.filter(item => item.id !== productId);
+        showNotification('Product removed from cart', 'info');
+      };
+
+      const updateCartItemQuantity = (productId, newQuantity) => {
+        const item = cartItems.value.find(item => item.id === productId);
+        if (item && newQuantity > 0 && newQuantity <= item.stock) {
+          item.quantity = newQuantity;
+        }
+      };
+
+      const clearCart = () => {
+        cartItems.value = [];
+      };
+
+      // Notification helper
+      let notificationCallback = null;
+      const setNotificationCallback = (callback) => {
+        notificationCallback = callback;
+      };
+
+      const showNotification = (message, color = 'info') => {
+        if (notificationCallback) {
+          notificationCallback(message, color);
+        }
+      };
+
+      return {
+        products,
+        categories,
+        cartItems,
+        loading,
+        cartItemsCount,
+        cartTotal,
+        fetchCategories,
+        fetchProducts,
+        addToCart,
+        removeFromCart,
+        updateCartItemQuantity,
+        clearCart,
+        setNotificationCallback,
+        showNotification
+      };
+    });
+
+    // Vue App
+    createApp({
+      setup() {
+        const store = useECommerceStore();
+        const cartDrawer = ref(false);
+        const selectedCategory = ref(null);
+        const searchQuery = ref('');
+        const snackbar = ref({
+          show: false,
+          message: '',
+          color: 'info'
+        });
+
+        // Set up notification callback
+        store.setNotificationCallback((message, color) => {
+          snackbar.value = {
+            show: true,
+            message,
+            color
+          };
+        });
+
+        const filteredProducts = computed(() => {
+          let filtered = store.products;
+
+          // Filter by category
+          if (selectedCategory.value !== null) {
+            const categoryName = store.categories.find(cat => cat.id === selectedCategory.value)?.name;
+            filtered = filtered.filter(product => product.category === categoryName);
+          }
+
+          // Filter by search query
+          if (searchQuery.value.trim()) {
+            const query = searchQuery.value.toLowerCase();
+            filtered = filtered.filter(product =>
+              product.name.toLowerCase().includes(query) ||
+              product.category.toLowerCase().includes(query)
+            );
+          }
+
+          return filtered;
+        });
+
+        const selectCategory = (categoryId) => {
+          selectedCategory.value = categoryId;
+        };
+
+        const filterProducts = () => {
+          // This method is called when search input changes
+          // The filtering is handled by the computed property
+        };
+
+        const calculateDiscountedPrice = (product) => {
+          return (product.price * (1 - product.discount / 100)).toFixed(2);
+        };
+
+        const checkout = () => {
+          store.showNotification(`Checkout completed! Total: $${store.cartTotal.toFixed(2)}`, 'success');
+          store.clearCart();
+          cartDrawer.value = false;
+        };
+
+        // Initialize data
+        onMounted(async () => {
+          await Promise.all([
+            store.fetchCategories(),
+            store.fetchProducts()
+          ]);
+        });
+
+        return {
+          store,
+          cartDrawer,
+          selectedCategory,
+          searchQuery,
+          snackbar,
+          filteredProducts,
+          selectCategory,
+          filterProducts,
+          calculateDiscountedPrice,
+          checkout
+        };
+      }
+    })
+    .use(createPinia())
+    .use(createVuetify({
+      theme: {
+        defaultTheme: 'light',
+        themes: {
+          light: {
+            colors: {
+              primary: '#1976D2',
+              secondary: '#424242',
+              accent: '#82B1FF',
+              error: '#FF5252',
+              info: '#2196F3',
+              success: '#4CAF50',
+              warning: '#FFC107'
+            }
+          }
+        }
+      }
+    }))
+    .mount('#app');
+  </script>
+</body>
+</html>
