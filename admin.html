@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>E-Commerce Admin Dashboard</title>
+  
+  <!-- Material-UI Fonts and Icons -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+  
+  <!-- React and Related Libraries -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- Material-UI -->
+  <script src="https://unpkg.com/@mui/material@5.14.5/umd/material-ui.development.js"></script>
+  <script src="https://unpkg.com/@emotion/react@11.11.1/dist/emotion-react.umd.min.js"></script>
+  <script src="https://unpkg.com/@emotion/styled@11.11.0/dist/emotion-styled.umd.min.js"></script>
+  
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Roboto', sans-serif;
+      background-color: #f5f5f5;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+    const { 
+      Box, 
+      Container, 
+      Typography, 
+      Button, 
+      Card, 
+      CardContent, 
+      TextField, 
+      Grid, 
+      AppBar, 
+      Toolbar, 
+      Paper,
+      ThemeProvider,
+      createTheme,
+      CssBaseline,
+      Fab,
+      Dialog,
+      DialogTitle,
+      DialogContent,
+      DialogActions,
+      List,
+      ListItem,
+      ListItemText,
+      Chip,
+      IconButton
+    } = MaterialUI;
+
+    // Create Material-UI theme
+    const theme = createTheme({
+      palette: {
+        primary: {
+          main: '#1976d2',
+        },
+        secondary: {
+          main: '#dc004e',
+        },
+        background: {
+          default: '#f5f5f5',
+        },
+      },
+    });
+
+    function MyApp() {
+      const [categories, setCategories] = useState([
+        { id: 1, name: 'Electronics', description: 'Electronic devices and gadgets' },
+        { id: 2, name: 'Clothing', description: 'Fashion and apparel' }
+      ]);
+      
+      const [products, setProducts] = useState([
+        { id: 1, name: 'Smartphone', description: 'Latest model smartphone', price: 699.99, quantity: 50, categoryId: 1 },
+        { id: 2, name: 'T-Shirt', description: 'Cotton casual t-shirt', price: 24.99, quantity: 100, categoryId: 2 }
+      ]);
+
+      const [openCategoryDialog, setOpenCategoryDialog] = useState(false);
+      const [openProductDialog, setOpenProductDialog] = useState(false);
+      const [newCategory, setNewCategory] = useState({ name: '', description: '' });
+      const [newProduct, setNewProduct] = useState({ name: '', description: '', price: '', quantity: '', categoryId: '' });
+
+      const handleAddCategory = () => {
+        if (newCategory.name.trim() && newCategory.description.trim()) {
+          setCategories([...categories, { 
+            id: Date.now(), 
+            name: newCategory.name, 
+            description: newCategory.description 
+          }]);
+          setNewCategory({ name: '', description: '' });
+          setOpenCategoryDialog(false);
+        }
+      };
+
+      const handleAddProduct = () => {
+        if (newProduct.name.trim() && newProduct.description.trim() && newProduct.price && newProduct.quantity && newProduct.categoryId) {
+          setProducts([...products, { 
+            id: Date.now(), 
+            name: newProduct.name, 
+            description: newProduct.description,
+            price: parseFloat(newProduct.price),
+            quantity: parseInt(newProduct.quantity),
+            categoryId: parseInt(newProduct.categoryId)
+          }]);
+          setNewProduct({ name: '', description: '', price: '', quantity: '', categoryId: '' });
+          setOpenProductDialog(false);
+        }
+      };
+
+      const getCategoryName = (categoryId) => {
+        const category = categories.find(cat => cat.id === categoryId);
+        return category ? category.name : 'Unknown';
+      };
+
+      return (
+        <ThemeProvider theme={theme}>
+          <CssBaseline />
+          <Box sx={{ flexGrow: 1 }}>
+            {/* App Bar */}
+            <AppBar position="static">
+              <Toolbar>
+                <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+                  E-Commerce Admin Dashboard
+                </Typography>
+              </Toolbar>
+            </AppBar>
+
+            <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+              {/* Dashboard Stats */}
+              <Grid container spacing={3} sx={{ mb: 4 }}>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Card>
+                    <CardContent>
+                      <Typography color="textSecondary" gutterBottom>
+                        Total Categories
+                      </Typography>
+                      <Typography variant="h4" component="h2" color="primary">
+                        {categories.length}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Card>
+                    <CardContent>
+                      <Typography color="textSecondary" gutterBottom>
+                        Total Products
+                      </Typography>
+                      <Typography variant="h4" component="h2" color="secondary">
+                        {products.length}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Card>
+                    <CardContent>
+                      <Typography color="textSecondary" gutterBottom>
+                        Total Stock
+                      </Typography>
+                      <Typography variant="h4" component="h2" color="success.main">
+                        {products.reduce((sum, prod) => sum + prod.quantity, 0)}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Card>
+                    <CardContent>
+                      <Typography color="textSecondary" gutterBottom>
+                        Avg Price
+                      </Typography>
+                      <Typography variant="h4" component="h2" color="warning.main">
+                        ${products.length > 0 ? (products.reduce((sum, prod) => sum + prod.price, 0) / products.length).toFixed(2) : '0.00'}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+
+              {/* Categories Section */}
+              <Paper sx={{ p: 3, mb: 3 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="h5" component="h2">
+                    Categories
+                  </Typography>
+                  <Button 
+                    variant="contained" 
+                    onClick={() => setOpenCategoryDialog(true)}
+                    startIcon={<span className="material-icons">add</span>}
+                  >
+                    Add Category
+                  </Button>
+                </Box>
+                
+                <Grid container spacing={2}>
+                  {categories.map((category) => (
+                    <Grid item xs={12} sm={6} md={4} key={category.id}>
+                      <Card variant="outlined">
+                        <CardContent>
+                          <Typography variant="h6" component="h3">
+                            {category.name}
+                          </Typography>
+                          <Typography color="textSecondary">
+                            {category.description}
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
+              </Paper>
+
+              {/* Products Section */}
+              <Paper sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="h5" component="h2">
+                    Products
+                  </Typography>
+                  <Button 
+                    variant="contained" 
+                    color="secondary"
+                    onClick={() => setOpenProductDialog(true)}
+                    startIcon={<span className="material-icons">inventory</span>}
+                  >
+                    Add Product
+                  </Button>
+                </Box>
+                
+                <Grid container spacing={2}>
+                  {products.map((product) => (
+                    <Grid item xs={12} sm={6} md={4} key={product.id}>
+                      <Card variant="outlined">
+                        <CardContent>
+                          <Typography variant="h6" component="h3">
+                            {product.name}
+                          </Typography>
+                          <Chip 
+                            label={getCategoryName(product.categoryId)} 
+                            size="small" 
+                            color="primary" 
+                            sx={{ mb: 1 }}
+                          />
+                          <Typography color="textSecondary" sx={{ mb: 1 }}>
+                            {product.description}
+                          </Typography>
+                          <Typography variant="h6" color="primary">
+                            ${product.price.toFixed(2)}
+                          </Typography>
+                          <Typography variant="body2">
+                            Stock: {product.quantity}
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
+              </Paper>
+
+              {/* Add Category Dialog */}
+              <Dialog open={openCategoryDialog} onClose={() => setOpenCategoryDialog(false)} maxWidth="sm" fullWidth>
+                <DialogTitle>Add New Category</DialogTitle>
+                <DialogContent>
+                  <TextField
+                    autoFocus
+                    margin="dense"
+                    label="Category Name"
+                    fullWidth
+                    variant="outlined"
+                    value={newCategory.name}
+                    onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
+                    sx={{ mb: 2 }}
+                  />
+                  <TextField
+                    margin="dense"
+                    label="Description"
+                    fullWidth
+                    multiline
+                    rows={4}
+                    variant="outlined"
+                    value={newCategory.description}
+                    onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
+                  />
+                </DialogContent>
+                <DialogActions>
+                  <Button onClick={() => setOpenCategoryDialog(false)}>Cancel</Button>
+                  <Button onClick={handleAddCategory} variant="contained">Add Category</Button>
+                </DialogActions>
+              </Dialog>
+
+              {/* Add Product Dialog */}
+              <Dialog open={openProductDialog} onClose={() => setOpenProductDialog(false)} maxWidth="sm" fullWidth>
+                <DialogTitle>Add New Product</DialogTitle>
+                <DialogContent>
+                  <TextField
+                    autoFocus
+                    margin="dense"
+                    label="Product Name"
+                    fullWidth
+                    variant="outlined"
+                    value={newProduct.name}
+                    onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                    sx={{ mb: 2 }}
+                  />
+                  <TextField
+                    margin="dense"
+                    label="Description"
+                    fullWidth
+                    multiline
+                    rows={3}
+                    variant="outlined"
+                    value={newProduct.description}
+                    onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
+                    sx={{ mb: 2 }}
+                  />
+                  <Grid container spacing={2} sx={{ mb: 2 }}>
+                    <Grid item xs={6}>
+                      <TextField
+                        label="Price"
+                        type="number"
+                        step="0.01"
+                        fullWidth
+                        variant="outlined"
+                        value={newProduct.price}
+                        onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
+                      />
+                    </Grid>
+                    <Grid item xs={6}>
+                      <TextField
+                        label="Quantity"
+                        type="number"
+                        fullWidth
+                        variant="outlined"
+                        value={newProduct.quantity}
+                        onChange={(e) => setNewProduct({ ...newProduct, quantity: e.target.value })}
+                      />
+                    </Grid>
+                  </Grid>
+                  <TextField
+                    select
+                    label="Category"
+                    fullWidth
+                    variant="outlined"
+                    value={newProduct.categoryId}
+                    onChange={(e) => setNewProduct({ ...newProduct, categoryId: e.target.value })}
+                    SelectProps={{ native: true }}
+                  >
+                    <option value="">Select a category</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </TextField>
+                </DialogContent>
+                <DialogActions>
+                  <Button onClick={() => setOpenProductDialog(false)}>Cancel</Button>
+                  <Button onClick={handleAddProduct} variant="contained" color="secondary">Add Product</Button>
+                </DialogActions>
+              </Dialog>
+            </Container>
+          </Box>
+        </ThemeProvider>
+      );
+    }
+    
+    // Render the App
+    ReactDOM.createRoot(document.getElementById('root')).render(<MyApp />);
+  </script>
+</body>
+</html>
