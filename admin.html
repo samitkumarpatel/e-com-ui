@@ -273,7 +273,7 @@
           }
           return productId;
         } catch (error) {
-          return rejectWithValue(error.message);
+            return rejectWithValue(error.message);
         }
       }
     );
@@ -1314,9 +1314,10 @@
         if (window.confirm('Are you sure you want to delete this product?')) {
           try {
             const resultAction = await dispatch(deleteProductAPI({
-              categoryId: product.category,
-              productId: product.id
+              categoryId: Number(product.category),
+              productId: Number(product.id)
             }));
+            
             if (deleteProductAPI.fulfilled.match(resultAction)) {
               dispatch(showSnackbar({ message: 'Product deleted successfully!', severity: 'success' }));
             }
